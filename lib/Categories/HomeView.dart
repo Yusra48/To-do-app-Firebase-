@@ -11,6 +11,10 @@ class HomeView extends StatefulWidget {
 
   @override
   State<HomeView> createState() => _HomeViewState();
+
+  static _HomeViewState? of(BuildContext context) {
+    return context.findAncestorStateOfType<_HomeViewState>();
+  }
 }
 
 class _HomeViewState extends State<HomeView> {
@@ -45,56 +49,17 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
-  Future<void> _updateTodoInFirestore(Todo updatedTodo) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('Todo')
-          .doc(updatedTodo.title)
-          .update(updatedTodo.toMap());
-      print('Todo updated successfully');
-    } catch (e) {
-      print('Failed to update todo: $e');
-    }
+  void reloadTodos() {
+    _loadTodos();
   }
 
-  void _showDeleteConfirmation(String todoTitle) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.transparent,
-          title: Text('Confirm Delet'),
-          content: Text('Are you sure you want to delete this todo?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _deleteTodo(todoTitle);
-              },
-              child: Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteTodo(String todoTitle) async {
+  Future<void> _deleteTodo(String todoId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('Todo')
-          .doc(todoTitle)
-          .delete();
-      print('Todo deleted successfully');
+      await FirebaseFirestore.instance.collection('Todo').doc(todoId).delete();
+      print('Todo with ID $todoId deleted successfully!');
       _loadTodos();
     } catch (e) {
-      print('Failed to delete todo: $e');
+      print('Failed to delete todo with ID $todoId: $e');
     }
   }
 
@@ -213,24 +178,23 @@ class _HomeViewState extends State<HomeView> {
                               IconButton(
                                 icon:
                                     const Icon(Icons.edit, color: Colors.white),
-                                onPressed: () async {
-                                  final result = await Navigator.push(
+                                onPressed: () {
+                                  Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          EditTodo(todo: todo),
+                                          EditScreen(todo: todo),
                                     ),
-                                  );
-                                  if (result != null && result) {
+                                  ).then((_) {
                                     _loadTodos();
-                                  }
+                                  });
                                 },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete,
                                     color: Colors.white),
                                 onPressed: () {
-                                  _showDeleteConfirmation(todo.title);
+                                  _deleteTodo(todo.id);
                                 },
                               ),
                             ],
@@ -321,46 +285,49 @@ class _HomeViewState extends State<HomeView> {
   }
 }
 
-enum Priority { low, medium, high }
-
 class Todo {
+  final String id;
   final String title;
   final String description;
   final DateTime dateTime;
   final Priority priority;
   bool completed;
-  bool checked;
 
   Todo({
+    required this.id,
     required this.title,
     required this.description,
     required this.dateTime,
     required this.priority,
     this.completed = false,
-    this.checked = false,
   });
-  factory Todo.fromSnapshot(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return Todo(
-      title: data['title'],
-      description: data['description'],
-      dateTime: DateTime.parse(data['dateTime']),
-      priority: Priority.values.firstWhere((priority) =>
-          priority.toString().split('.').last.toUpperCase() ==
-          data['priority']),
-      completed: data['completed'] ?? false,
-      checked: data['checked'] ?? false,
-    );
-  }
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'title': title,
       'description': description,
       'dateTime': dateTime.toIso8601String(),
       'priority': priority.toString().split('.').last.toUpperCase(),
       'completed': completed,
-      'checked': checked,
     };
   }
+
+  factory Todo.fromSnapshot(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Todo(
+      id: doc.id,
+      title: data['title'],
+      description: data['description'],
+      dateTime: DateTime.parse(data['dateTime']),
+      priority: Priority.values.firstWhere(
+        (priority) =>
+            priority.toString().split('.').last.toUpperCase() ==
+            data['priority'],
+      ),
+      completed: data['completed'] ?? false,
+    );
+  }
 }
+
+enum Priority { low, medium, high }
