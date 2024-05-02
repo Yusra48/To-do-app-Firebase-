@@ -2,58 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:application/Categories/HomeView.dart';
 
-class EditTodo extends StatefulWidget {
+class EditScreen extends StatelessWidget {
   final Todo todo;
 
-  EditTodo({required this.todo});
+  const EditScreen({super.key, required this.todo});
 
-  @override
-  _EditTodoState createState() => _EditTodoState();
-}
-
-class _EditTodoState extends State<EditTodo> {
-  late TextEditingController _titleController;
-  late TextEditingController _descriptionController;
-
-  @override
-  void initState() {
-    super.initState();
-    _titleController = TextEditingController(text: widget.todo.title);
-    _descriptionController =
-        TextEditingController(text: widget.todo.description);
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _updateTodoAndReload() async {
-    Todo updatedTodo = Todo(
-      title: _titleController.text,
-      description: _descriptionController.text,
-      dateTime: widget.todo.dateTime,
-      priority: widget.todo.priority,
-      completed: widget.todo.completed,
-    );
-
+  Future<void> updateTodo(Todo updatedTodo) async {
     try {
-      await _updateTodoInFirestore(updatedTodo);
-      Navigator.pop(context, true);
-    } catch (e) {
-      print('Failed to update todo: $e');
-    }
-  }
-
-  Future<void> _updateTodoInFirestore(Todo updatedTodo) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('Todo')
-          .doc(widget.todo.title)
-          .update(updatedTodo.toMap());
-      print('Todo updated successfully');
+      final CollectionReference todoCollection =
+          FirebaseFirestore.instance.collection('Todo');
+      await todoCollection.doc(updatedTodo.id).update(updatedTodo.toMap());
+      print('Todo with ID ${updatedTodo.id} updated successfully!');
     } catch (e) {
       print('Failed to update todo: $e');
       throw e;
@@ -62,10 +21,23 @@ class _EditTodoState extends State<EditTodo> {
 
   @override
   Widget build(BuildContext context) {
+    TextEditingController titleController =
+        TextEditingController(text: todo.title);
+    TextEditingController descriptionController =
+        TextEditingController(text: todo.description);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Todo'),
-      ),
+          backgroundColor: Colors.black12,
+          title: const Center(
+            child: Text(
+              'Edit Todo',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold),
+            ),
+          )),
       backgroundColor: Colors.black,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -73,18 +45,48 @@ class _EditTodoState extends State<EditTodo> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
-              controller: _titleController,
-              decoration: InputDecoration(labelText: 'Title'),
+              controller: titleController,
+              decoration: const InputDecoration(
+                  labelText: 'Title',
+                  labelStyle: TextStyle(
+                    color: Colors.white,
+                  ),
+                  hintStyle: TextStyle(color: Colors.white)),
             ),
-            SizedBox(height: 12.0),
             TextField(
-              controller: _descriptionController,
-              decoration: InputDecoration(labelText: 'Description'),
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                  labelText: 'Description',
+                  labelStyle: TextStyle(color: Colors.white),
+                  hintStyle: TextStyle(color: Colors.white)),
             ),
-            SizedBox(height: 16.0),
+            const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _updateTodoAndReload,
-              child: Text('Save Changes'),
+              onPressed: () async {
+                Todo updatedTodo = Todo(
+                  id: todo.id,
+                  title: titleController.text,
+                  description: descriptionController.text,
+                  dateTime: todo.dateTime,
+                  priority: todo.priority,
+                  completed: todo.completed,
+                );
+
+                try {
+                  await updateTodo(updatedTodo);
+                  Navigator.pop(context);
+                  HomeView.of(context)?.reloadTodos();
+                } catch (e) {
+                  print('Error updating todo: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update todo: $e'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save'),
             ),
           ],
         ),
