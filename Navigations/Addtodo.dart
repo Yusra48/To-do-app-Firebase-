@@ -60,7 +60,9 @@ class _AddtodoState extends State<Addtodo> {
       return;
     }
 
+    var todo;
     final newTodo = Todo(
+      id: todo.id,
       title: title,
       description: description,
       dateTime: DateTime(
@@ -72,14 +74,13 @@ class _AddtodoState extends State<Addtodo> {
       ),
       priority: selectedPriority,
     );
-
     try {
       await FirebaseFirestore.instance.collection('Todo').add(newTodo.toMap());
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Todo added successfully'),
       ));
-      widget.onTodoAdded(newTodo); // Notify the parent widget with the new todo
-      Navigator.of(context).pop(); // Close the Addtodo screen
+      widget.onTodoAdded(newTodo);
+      Navigator.of(context).pop();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Failed to add todo: $e'),
@@ -110,8 +111,13 @@ class _AddtodoState extends State<Addtodo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add a new task'),
-      ),
+          title: const Center(
+        child: Text(
+          'Add a new todo',
+          style: TextStyle(
+              color: Colors.white, fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+      )),
       backgroundColor: Colors.black,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -120,12 +126,18 @@ class _AddtodoState extends State<Addtodo> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
+              decoration: const InputDecoration(
+                  labelText: 'Title',
+                  labelStyle: TextStyle(color: Colors.white),
+                  hintStyle: TextStyle(color: Colors.white)),
             ),
             const SizedBox(height: 12.0),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: const InputDecoration(
+                  labelText: 'Description',
+                  labelStyle: TextStyle(color: Colors.white),
+                  hintStyle: TextStyle(color: Colors.white)),
             ),
             const SizedBox(height: 12.0),
             Row(
